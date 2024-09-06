@@ -18,8 +18,7 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
 	decoder.Decode(&requestBody)
-
-	message = requestBody.Message
+	fmt.Fprintf(w, "Получено сообщение %v", message)
 }
 
 func getHandler(w http.ResponseWriter, r *http.Request) {
