@@ -11,21 +11,35 @@ type RequestBody struct {
 	Message string `json:"message"`
 }
 
-var message string = "Lets GOO"
-
 func postHandler(w http.ResponseWriter, r *http.Request) {
 	var requestBody RequestBody
 	decoder := json.NewDecoder(r.Body)
 
 	decoder.Decode(&requestBody)
-	fmt.Fprintf(w, "Получено сообщение %v", message)
+
+	newMessage := Message{Text: requestBody.Message}
+
+	DB.Create(&newMessage)
+
+	fmt.Fprintf(w, "Сообщение сохранено %v", newMessage.Text)
 }
 
 func getHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "hello, %v", message)
+	var messages []Message
+	DB.Find(&messages)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(messages)
 }
 
 func main() {
+	// Вызываем метод InitDB() из файла db.go
+	InitDB()
+
+	// Автоматическая миграция модели Message
+	DB.AutoMigrate(&Message{})
+
 	router := mux.NewRouter()
 
 	router.HandleFunc("/post", postHandler)
