@@ -4,5 +4,6 @@ import "gorm.io/gorm"
 
 type Message struct {
 	gorm.Model
-	Text string `json:"text"` // Наш сервер будет ожидать json c полем text
+	TextName        string `json:"nameD"`
+	TextDescription string `json:"descriptionD"` // Наш сервер будет ожидать json c полем text
 }

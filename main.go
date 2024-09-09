@@ -7,24 +7,26 @@ import (
 	"net/http"
 )
 
-type RequestBody struct {
-	Message string `json:"message"`
+type RequestMsg struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 func postHandler(w http.ResponseWriter, r *http.Request) {
-	var requestBody RequestBody
 	decoder := json.NewDecoder(r.Body)
+	var msg RequestMsg
+	decoder.Decode(&msg)
 
-	decoder.Decode(&requestBody)
+	sendToDB := Message{TextName: msg.Name,
+		TextDescription: msg.Description}
 
-	newMessage := Message{Text: requestBody.Message}
+	DB.Create(&sendToDB)
 
-	DB.Create(&newMessage)
-
-	fmt.Fprintf(w, "Сообщение сохранено %v", newMessage.Text)
+	fmt.Fprintf(w, "The message %v %v is saved", msg.Name, msg.Description)
 }
 
 func getHandler(w http.ResponseWriter, r *http.Request) {
+
 	var messages []Message
 	DB.Find(&messages)
 
@@ -33,8 +35,28 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(messages)
 }
 
+func patchHandler(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var updatedInfo RequestMsg
+	decoder.Decode(&updatedInfo)
+	vars := mux.Vars(r)
+	id := vars["id"]
+	DB.Model(&Message{}).Where("id = ?", id).Updates(Message{
+		TextName:        updatedInfo.Name,
+		TextDescription: updatedInfo.Description,
+	})
+
+	fmt.Fprintf(w, "Message with id %v was update for %v %v", id, updatedInfo.Name, updatedInfo.Description)
+}
+
+func deleteHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	DB.Delete(&Message{}, id)
+	fmt.Fprintf(w, "The resource was deleted")
+}
+
 func main() {
-	// Вызываем метод InitDB() из файла db.go
 	InitDB()
 
 	// Автоматическая миграция модели Message
@@ -42,8 +64,10 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/post", postHandler)
-	router.HandleFunc("/get", getHandler)
+	router.HandleFunc("/post", postHandler).Methods("POST")
+	router.HandleFunc("/get", getHandler).Methods("GET")
+	router.HandleFunc("/patch/{id}", patchHandler).Methods("PATCH")
+	router.HandleFunc("/delete/{id}", deleteHandler).Methods("DELETE")
 
 	http.ListenAndServe(":8080", router)
 }
