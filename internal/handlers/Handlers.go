@@ -1,9 +1,8 @@
 package handlers
 
 import (
-	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/stassme/GoTask1/internal/messagesService" // Import the service
+	"github.com/labstack/echo/v4"
+	"github.com/stassme/GoTask1/internal/messagesService"
 	"net/http"
 	"strconv"
 )
@@ -18,75 +17,58 @@ func NewHandler(service *messagesService.MessageService) *Handler {
 	}
 }
 
-func (h *Handler) GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetMessagesHandler(c echo.Context) error {
 	messages, err := h.Service.GetAllMessages()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(messages)
+	return c.JSON(http.StatusOK, messages)
 }
 
-func (h *Handler) PostMessageHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) PostMessageHandler(c echo.Context) error {
 	var message messagesService.Message
-	err := json.NewDecoder(r.Body).Decode(&message)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	if err := c.Bind(&message); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	createdMessage, err := h.Service.CreateMessage(message)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(createdMessage)
+	return c.JSON(http.StatusOK, createdMessage)
 }
 
-func (h *Handler) PatchMessageHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
+func (h *Handler) PatchMessageHandler(c echo.Context) error {
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
-		return
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid ID format"})
 	}
 
 	var updatedMessage messagesService.Message
-	err = json.NewDecoder(r.Body).Decode(&updatedMessage)
-	if err != nil {
-		http.Error(w, "Failed to decode JSON: "+err.Error(), http.StatusBadRequest)
-		return
+	if err := c.Bind(&updatedMessage); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to decode JSON: " + err.Error()})
 	}
 
 	message, err := h.Service.UpdateMessageByID(id, updatedMessage)
 	if err != nil {
-		http.Error(w, "Failed to update message: "+err.Error(), http.StatusInternalServerError)
-		return
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update message: " + err.Error()})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(message); err != nil {
-		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return c.JSON(http.StatusOK, message)
 }
 
-func (h *Handler) DeleteMessageHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
+func (h *Handler) DeleteMessageHandler(c echo.Context) error {
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
-		return
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid ID format"})
 	}
 
-	err = h.Service.DeleteMessageByID(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err := h.Service.DeleteMessageByID(id); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+
+	return c.NoContent(http.StatusNoContent)
 }

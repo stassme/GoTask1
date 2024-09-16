@@ -1,11 +1,10 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
+	"github.com/labstack/echo/v4"
 	"github.com/stassme/GoTask1/internal/database"
 	"github.com/stassme/GoTask1/internal/handlers"
 	"github.com/stassme/GoTask1/internal/messagesService"
-	"net/http"
 )
 
 func main() {
@@ -17,12 +16,12 @@ func main() {
 
 	handler := handlers.NewHandler(service)
 
-	router := mux.NewRouter()
-	router.HandleFunc("/get", handler.GetMessagesHandler).Methods("GET")
-	router.HandleFunc("/post", handler.PostMessageHandler).Methods("POST")
+	e := echo.New()
 
-	router.HandleFunc("/delete/{id}", handler.DeleteMessageHandler).Methods("DELETE")
+	e.GET("/get", handler.GetMessagesHandler)
+	e.POST("/post", handler.PostMessageHandler)
+	e.DELETE("/delete/:id", handler.DeleteMessageHandler)
+	e.PATCH("/patch/:id", handler.PatchMessageHandler)
 
-	router.HandleFunc("/patch/{id}", handler.PatchMessageHandler).Methods("PATCH")
-	http.ListenAndServe(":8080", router)
+	e.Start(":8080")
 }
